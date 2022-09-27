@@ -1,0 +1,6 @@
+# GCP keys etc
+secrets/
+# Terraform files
+*.tfstate*
+.terraform.lock.hcl
+.terraform/
