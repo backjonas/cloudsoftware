@@ -4,3 +4,6 @@ secrets/
 *.tfstate*
 .terraform.lock.hcl
 .terraform/
+# Python stuff, virtualenv, cache
+venv
+__pycache__

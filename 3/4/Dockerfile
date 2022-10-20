@@ -3,7 +3,7 @@ WORKDIR /application
 ARG PYTHON_VERSION=3.8
 
 RUN apt update
-RUN echo $PYTHON_VERSION
+
 RUN if [ "$PYTHON_VERSION" = "3.8" ]; then \
   apt install -y curl python3-distutils python3.8-dev \
   && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
