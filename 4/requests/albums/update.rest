@@ -1,0 +1,7 @@
+PUT http://localhost:5000/listAlbum/63526e7f82154bc9bbd63fc4
+Content-Type: application/json
+
+{
+  "name": "Some OTher New Album",
+  "description": "new desc"
+}

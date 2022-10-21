@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from db import initialize_db
 from models import Movie, Actor
 from bson.objectid import ObjectId
-# from flask_mongoengine import MongoEngine
 
 app = Flask(__name__)
 

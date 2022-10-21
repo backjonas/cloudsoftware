@@ -1,0 +1,7 @@
+POST http://localhost:5000/listAlbum
+Content-Type: application/json
+
+{
+  "name": "Some Other Album",
+  "description": "bad"
+}

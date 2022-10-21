@@ -1,0 +1,5 @@
+GET http://localhost:5000/listAlbum/63526e7f82154bc9bbd63fc4 HTTP/1.1
+
+###
+
+GET http://localhost:5000/listAlbum HTTP/1.1
