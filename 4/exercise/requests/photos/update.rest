@@ -1,0 +1,14 @@
+PUT http://localhost:5000/listPhoto/63528ea36133b08dc0d70d66
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="name"
+Content-Type: text/plain
+
+SomeOtherNew
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="image_file"; filename="cam.jpg"
+Content-Type: image/jpg
+
+< /home/jonas/cam.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--

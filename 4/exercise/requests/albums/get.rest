@@ -1,0 +1,5 @@
+GET http://localhost:5000/listPhoto/63527f05c8f5c681c3037bfa HTTP/1.1
+
+###
+
+GET http://localhost:5000/listPhotos HTTP/1.1

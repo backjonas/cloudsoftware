@@ -11,7 +11,7 @@ from database.models import Photo, Album
 app = Flask(__name__)
 
 app.config['MONGODB_SETTINGS'] = {
-'host':'mongodb://localhost/flask-database-db'
+'host':'mongodb://mongo/flask-database-db'
 }
 
 db = initialize_db(app)
@@ -24,14 +24,6 @@ def str_list_to_objectid(str_list):
     )
   )
 
-def object_list_as_id_list(obj_list):
-  return list(
-    map(
-      lambda obj: str(obj.id),
-      obj_list
-    )
-  )
-
 def object_list_as_name_list(obj_list):
   return list(
     map(
@@ -40,6 +32,95 @@ def object_list_as_name_list(obj_list):
     )
   )
 
+# Photo routes
+@app.route('/listPhoto', methods=["POST"])
+def add_photo():
+  default_album = Album.objects.get(name='Default')
+  if not default_album:
+    default_album = Album(name='Default').save()
+
+  posted_image = request.files['image_file']
+  posted_data = request.form.to_dict()
+  keys = posted_data.keys()
+  if posted_data and 'albums' not in keys:
+    posted_data['albums'] = [default_album.id]
+
+  photo = Photo(**posted_data)
+  photo.image_file.replace(posted_image)
+  photo.save()
+  return jsonify({
+    'message': 'Photo succesfully created',
+    'id': str(photo.id)
+  }), 201
+
+@app.route('/listPhoto/<photo_id>', methods=['GET'])
+def get_one_photo(photo_id: str):
+  photo = Photo.objects.get_or_404(id=photo_id)
+  base64_data = codecs.encode(photo.image_file.read(), 'base64')
+  image = base64_data.decode('utf-8')
+
+  return jsonify({
+    'name': photo.name,
+    'tags': photo.tags,
+    'location': photo.location,
+    'albums': photo.albums,
+    'file': image
+  }), 200
+
+@app.route('/listPhoto/<photo_id>', methods=['PUT'])
+def update_photo(photo_id):
+  posted_image = request.files['image_file']
+  posted_data = request.form.to_dict()
+  keys = posted_data.keys()
+  if posted_data and keys:
+    if "tags" in keys:
+      posted_data["tags"] = str_list_to_objectid(posted_data["tags"])
+    if "albums" in keys:
+      posted_data["albums"] = str_list_to_objectid(posted_data["albums"])
+    photo = Photo.objects.get_or_404(id=photo_id)
+    photo.update(**posted_data)
+    photo.image_file.replace(posted_image)
+    photo.save()
+
+  return jsonify({
+    'message': 'Photo succesfully updated',
+    'id': str(photo_id)
+  }), 200
+
+@app.route('/listPhoto/<photo_id>', methods=['DELETE'])
+def delete_photo(photo_id):
+  photo = Photo.objects.get_or_404(id=photo_id)
+  photo.delete()
+  return jsonify({
+    'message': 'Photo succesfully deleted',
+    'id': str(photo_id)
+  }), 200
+
+@app.route('/listPhotos', methods=['GET'])
+def get_photos():
+  args = request.args
+
+  albumName = args.get('albumName', 'Default')
+  photo_objects = Photo.objects()
+  photo_objects = filter(
+    lambda photo: albumName in [album.name for album in photo.albums], 
+    photo_objects
+  )
+
+  tag = args.get('tag', None)
+  if tag is not None:
+    photo_objects = filter(
+      lambda photo: tag in photo.tags,
+      photo_objects
+    )
+
+  photos = []
+  for photo in photo_objects:
+    base64_data = codecs.encode(photo.image_file.read(), 'base64')
+    image = base64_data.decode('utf-8')
+    photos.append({'name': photo.name, 'location': photo.location, 'file': image})
+
+  return jsonify(photos), 200
 
 # Album routes
 @app.route('/listAlbum', methods=["POST"])
