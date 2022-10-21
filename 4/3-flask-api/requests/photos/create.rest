@@ -5,10 +5,6 @@ Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0g
 Content-Disposition: form-data; name="name"
 Content-Type: text/plain
 
-SomeName2
-Content-Disposition: form-data; name="albums"
-Content-Type: application/json
-
 SomeName
 ------WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="image_file"; filename="cam.jpg"

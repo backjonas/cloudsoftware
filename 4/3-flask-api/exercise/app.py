@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request, Response
+import json
 from bson.objectid import ObjectId
+import os
+import urllib
 import base64
 import codecs
-import json
 
 from database.db import initialize_db
 from database.models import Photo, Album
@@ -11,7 +13,7 @@ from database.models import Photo, Album
 app = Flask(__name__)
 
 app.config['MONGODB_SETTINGS'] = {
-'host':'mongodb://mongo/flask-database-db'
+'host':'mongodb://mongo/flask-database'
 }
 
 db = initialize_db(app)
@@ -35,8 +37,9 @@ def object_list_as_name_list(obj_list):
 # Photo routes
 @app.route('/listPhoto', methods=["POST"])
 def add_photo():
-  default_album = Album.objects.get(name='Default')
-  if not default_album:
+  try:
+    default_album = Album.objects.get(name='Default')
+  except Exception as e:
     default_album = Album(name='Default').save()
 
   posted_image = request.files['image_file']
@@ -48,10 +51,10 @@ def add_photo():
   photo = Photo(**posted_data)
   photo.image_file.replace(posted_image)
   photo.save()
-  return jsonify({
+  return {
     'message': 'Photo succesfully created',
     'id': str(photo.id)
-  }), 201
+  }, 201
 
 @app.route('/listPhoto/<photo_id>', methods=['GET'])
 def get_one_photo(photo_id: str):
@@ -59,13 +62,13 @@ def get_one_photo(photo_id: str):
   base64_data = codecs.encode(photo.image_file.read(), 'base64')
   image = base64_data.decode('utf-8')
 
-  return jsonify({
+  return {
     'name': photo.name,
     'tags': photo.tags,
     'location': photo.location,
     'albums': photo.albums,
     'file': image
-  }), 200
+  }, 200
 
 @app.route('/listPhoto/<photo_id>', methods=['PUT'])
 def update_photo(photo_id):
@@ -82,19 +85,19 @@ def update_photo(photo_id):
     photo.image_file.replace(posted_image)
     photo.save()
 
-  return jsonify({
+  return {
     'message': 'Photo succesfully updated',
     'id': str(photo_id)
-  }), 200
+  }, 200
 
 @app.route('/listPhoto/<photo_id>', methods=['DELETE'])
 def delete_photo(photo_id):
   photo = Photo.objects.get_or_404(id=photo_id)
   photo.delete()
-  return jsonify({
+  return {
     'message': 'Photo succesfully deleted',
     'id': str(photo_id)
-  }), 200
+  }, 200
 
 @app.route('/listPhotos', methods=['GET'])
 def get_photos():
@@ -127,10 +130,10 @@ def get_photos():
 def add_album():
   body = request.get_json()
   album = Album(**body).save()
-  return jsonify({
+  return {
     'message': 'Album succesfully created',
     'id': str(album.id)
-  }), 201
+  }, 201
 
 @app.route('/listAlbum', methods=["GET"])
 def get_all_albums():
@@ -147,21 +150,17 @@ def update_album(album_id):
   body = request.get_json()
   album = Album.objects.get_or_404(id=album_id)
   album.update(**body)
-  return jsonify({
+  return {
     'message': 'Album succesfully updated',
     'id': str(album_id)
-  }), 200
+  }, 200
 
 @app.route('/listAlbum/<album_id>', methods=["DELETE"])
 def delete_album(album_id):
   print(album_id)
   album = Album.objects.get_or_404(id=album_id)
   album.delete()
-  return jsonify({
+  return {
     'message': 'Album succesfully deleted',
     'id': str(album_id)
-  }), 200
-
-
-if __name__ == '__main__':
-    app.run()
+  }, 200
