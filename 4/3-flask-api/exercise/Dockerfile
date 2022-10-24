@@ -2,13 +2,12 @@ FROM python:3.10.8-alpine3.16
 WORKDIR /usr/app
 
 RUN apk update
-RUN apk add gcc libc-dev linux-headers zlib-dev jpeg-dev libjpeg
+RUN apk add build-base libc-dev linux-headers zlib-dev jpeg-dev libjpeg
 
-COPY requirements.txt /usr/app
+COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-COPY app.py /usr/app/
-COPY database /usr/app/database/
+COPY . ./
 
 EXPOSE 5000
 

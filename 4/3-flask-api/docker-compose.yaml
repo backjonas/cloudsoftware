@@ -1,4 +1,4 @@
-version: "3.5"
+version: "3"
 
 services:
   backend:
@@ -10,6 +10,7 @@ services:
       - mongo
     image: flaskbackend:v1
   mongo:
+    container_name: mongo
     image: mongo:6.0.2
     ports:
       - '1048:27017'
