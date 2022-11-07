@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: Cloud software and systems - Ex. 5.3
+  version: 1.0.11
+components: 
+  schemas: 
+    Photo: 
+      type: object
+      required:
+        - name
+        - access
+        - location
+        - file
+        - created_date
+        - modified_date
+      properties: 
+        id: 
+          type: string
+          readOnly: true
+        name: 
+          type: string
+          maxLength: 20
+        description: 
+          type: string
+          maxLength: 100
+        access: 
+          type: string
+          enum: 
+            - public 
+            - private
+        location: 
+          type: string
+        file: 
+          type: string
+        created_date: 
+          type: string
+          format: date-time
+        modified_date: 
+          type: string
+          format: date-time
+    Photos: 
+      type: array
+      items:
+        $ref: '#/components/schemas/Photo'
+      description: An array of photos
+    Success:
+      type: object
+      properties:
+        message:
+          type: string
+        id:
+          type: string
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+paths:
+  /photo:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Photo'
+      responses:
+        'default':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Default response'
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+          description: 'Photo successfully created'
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Unprocessable entity'
+  /photos:
+    get:
+      parameters:
+        - in: query
+          name: access
+          schema:
+            type: string
+      responses:
+        'default':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Default response'
+        '200':
+          content:
+           application/json:
+            schema:
+              $ref: '#/components/schemas/Photos'
+          description: 'OK'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Not found'
+  /photo/{photo_id}:
+    parameters:
+    - name: photo_id
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      responses:
+        'default':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Default response'
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: 
+                  id: 
+                    type: string
+                    readOnly: true
+                  name: 
+                    type: string
+                    maxLength: 20
+                  description: 
+                    type: string
+                    maxLength: 100
+                  access: 
+                    type: string
+                    enum: 
+                      - public 
+                      - private
+                  location: 
+                    type: string
+                  created_date: 
+                    type: string
+                    format: date-time
+                  modified_date: 
+                    type: string
+                    format: date-time
+          description: 'OK'
+        '404':
+          description: 'Not found'
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Photo'
+      responses:
+        'default':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Default response'
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+          description: 'OK'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Not found'
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Unprocessable entity'
+    delete:
+      responses:
+        'default':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Default response'
+        '204':
+          description: The resource was deleted successfully.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'Not found'
