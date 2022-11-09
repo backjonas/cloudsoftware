@@ -26,11 +26,94 @@ class ShoppingWorker:
         # To implement - Initialize the RabbitMQ connection, channel, exchange and queue here
         # Also initialize the channels for the billing_event_producer and customer_app_event_producer
         xprint("ShoppingWorker {}: initialize_rabbitmq() called".format(self.worker_id))
+        self.connection = pika.BlockingConnection(
+          pika.ConnectionParameters(host='localhost')
+        )
+        self.channel = self.connection.channel()
+
+        # Initialize shopping_events_exchange
+        self.channel.exchange_declare(
+            exchange='shopping_events_exchange', 
+            exchange_type='x-consistent-hash'
+        )
+        self.channel.exchange_declare(
+            exchange='dlx',
+            exchange_type='direct'
+        )
+
+        self.channel.queue_declare(
+            queue=self.queue,
+            exclusive=True,
+            arguments={
+                'x-dead-letter-routing-key': 'shopping_events_dead_letter_queue',
+                'x-dead-letter-exchange' : 'dlx'
+            }
+        )
+        self.channel.queue_bind(
+          exchange='shopping_events_exchange',
+          queue=self.queue, routing_key=self.weight
+        )
+
+        # Initialize event producers
+        self.billing_event_producer = BillingEventProducer(
+            self.connection,
+            self.worker_id
+        )
+        self.billing_event_producer.initialize_rabbitmq()
+        self.customer_app_event_producer = CustomerEventProducer(
+            self.connection,
+            self.worker_id
+        )
+        self.customer_app_event_producer.initialize_rabbitmq()
 
     def handle_shopping_event(self, ch, method, properties, body):
         # To implement - This is the callback that is passed to "on_message_callback" when a message is received
         xprint("ShoppingWorker {}: handle_event() called".format(self.worker_id))
         # Handle the application logic and the publishing of events here
+        shopping_event = ProductEvent(**json.loads(body))
+        xprint(f'shopping_event: {shopping_event}')
+        customer_id = self.get_customer_id_from_shopping_event(shopping_event)
+        if customer_id is None:
+            xprint('customer_id not found for shopping event')
+            ch.basic_reject(delivery_tag=method.delivery_tag)
+            return
+
+        if shopping_event.product_number not in customers_database.values():
+            xprint(f'Unknown product number: {shopping_event.product_number}' )
+            ch.basic_reject(delivery_tag=method.delivery_tag)
+            return
+
+        if shopping_event.event_type == 'pick up':
+            self.customer_app_event_producer.publish_shopping_event(
+                customer_id=customer_id,
+                shopping_event=shopping_event
+            )
+            self.shopping_state[shopping_event.product_number] = shopping_event.timestamp
+            self.shopping_events.append(shopping_event)
+        
+        elif shopping_event.event_type == 'purchase':
+            self.customer_app_event_producer.publish_shopping_event(
+                customer_id=customer_id,
+                shopping_event=shopping_event
+            )
+
+            billing_event = BillingEvent(
+                customer_id=customer_id,
+                product_number=shopping_event.product_number,
+                pickup_time=self.shopping_state.get(shopping_event.product_number, None),
+                purchase_time=shopping_event.timestamp,
+                shopping_cost=cost_per_unit * number_of_units * 0.8
+            )
+            self.billing_event_producer.publish(billing_event)
+            self.shopping_state.pop(shopping_event.product_number)
+            self.shopping_events.append(shopping_event)
+
+        else:
+            xprint(f'Unknown event_type: {shopping_event.event_type}')
+            ch.basic_reject(delivery_tag=method.delivery_tag)
+            return
+
+        ch.basic_ack(delivery_tag = method.delivery_tag)
 
     # Utility function to get the customer_id from a shopping event
     def get_customer_id_from_shopping_event(self, shopping_event):
@@ -44,6 +127,12 @@ class ShoppingWorker:
     def start_consuming(self):
         # To implement - Start consuming from Rabbit
         xprint("ShoppingWorker {}: start_consuming() called".format(self.worker_id))
+        self.channel.basic_consume(
+            queue=self.queue, 
+            on_message_callback=self.handle_shopping_event, 
+            auto_ack=False
+        )
+        self.channel.start_consuming()
 
     def close(self):
         # Do not edit this method
@@ -71,6 +160,7 @@ class BillingEventProducer:
     def initialize_rabbitmq(self):
         # To implement - Initialize the RabbitMq connection, channel, exchange and queue here
         xprint("BillingEventProducer {}: initialize_rabbitmq() called".format(self.worker_id))
+        self.channel.queue_declare(queue='billing_events')
 
     def publish(self, billing_event):
         xprint("BillingEventProducer {}: Publishing billing event {}".format(
@@ -78,6 +168,11 @@ class BillingEventProducer:
             vars(billing_event)))
         # To implement - publish a message to the Rabbitmq here
         # Use json.dumps(vars(billing_event)) to convert the shopping_event object to JSON
+        self.channel.basic_publish(
+            exchange='',
+            routing_key='',
+            body=json.dumps(vars(billing_event))
+        )
 
     def close(self):
         # Do not edit this method
@@ -95,6 +190,10 @@ class CustomerEventProducer:
     def initialize_rabbitmq(self):
         # To implement - Initialize the RabbitMq connection, channel, exchange and queue here
         xprint("CustomerEventProducer {}: initialize_rabbitmq() called".format(self.worker_id))
+        self.channel.exchange_declare(
+            exchange='customer_app_events',
+            exchange_type='topic'
+        )
 
     def publish_billing_event(self, billing_event):
         xprint("{}: CustomerEventProducer: Publishing billing event {}"
@@ -107,6 +206,11 @@ class CustomerEventProducer:
               .format(self.worker_id, customer_id, vars(shopping_event)))
         # To implement - publish a message to the Rabbitmq here
         # Use json.dumps(vars(shopping_event)) to convert the shopping_event object to JSON
+        self.channel.basic_publish(
+            exchange='customer_app_events',
+            routing_key=customer_id,
+            body=json.dumps(vars(shopping_event))
+        )
 
     def close(self):
         # Do not edit this method
