@@ -88,6 +88,7 @@ class ShoppingWorker:
                 customer_id=customer_id,
                 shopping_event=shopping_event
             )
+
             self.shopping_state[shopping_event.product_number] = shopping_event.timestamp
             self.shopping_events.append(shopping_event)
         
@@ -104,8 +105,10 @@ class ShoppingWorker:
                 purchase_time=shopping_event.timestamp,
                 shopping_cost=cost_per_unit * number_of_units * 0.8
             )
+            self.customer_app_event_producer.publish_billing_event(billing_event)
             self.billing_event_producer.publish(billing_event)
-            self.shopping_state.pop(shopping_event.product_number)
+
+            self.shopping_state.pop(shopping_event.product_number, None)
             self.shopping_events.append(shopping_event)
 
         else:
@@ -170,7 +173,7 @@ class BillingEventProducer:
         # Use json.dumps(vars(billing_event)) to convert the shopping_event object to JSON
         self.channel.basic_publish(
             exchange='',
-            routing_key='',
+            routing_key='billing_events',
             body=json.dumps(vars(billing_event))
         )
 
@@ -200,6 +203,11 @@ class CustomerEventProducer:
               .format(self.worker_id, vars(billing_event)))
         # To implement - publish a message to the Rabbitmq here
         # Use json.dumps(vars(billing_event)) to convert the shopping_event object to JSON
+        self.channel.basic_publish(
+            exchange='customer_app_events',
+            routing_key=billing_event.customer_id,
+            body=json.dumps(vars(billing_event))
+        )
 
     def publish_shopping_event(self, customer_id, shopping_event):
         xprint("{}: CustomerEventProducer: Publishing shopping event {} {}"

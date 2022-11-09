@@ -38,7 +38,7 @@ class CustomerEventConsumer:
         ).method.queue
 
         self.channel.queue_bind(
-            exchange='shopping_events_exchange',
+            exchange='customer_app_events',
             queue=self.temporary_queue_name,
             routing_key=self.customer_id
         )
@@ -46,24 +46,17 @@ class CustomerEventConsumer:
     def handle_event(self, ch, method, properties, body):
         # To implement - This is the callback that is passed to "on_message_callback" when a message is received
         xprint("CustomerEventConsumer {}: handle_event() called".format(self.customer_id))
-        shopping_event = ProductEvent(**json.loads(body))
-        xprint(f'shopping_event: {shopping_event}')
+        xprint(f'shopping_event: {json.loads(body)}')
+        body_dict = json.loads(body)
 
-        if shopping_event.event_type == 'pick up':
-            self.shopping_state[shopping_event.product_number] = shopping_event.timestamp
+        if body_dict.get('event_type', None) is not None:
+            shopping_event = ProductEvent(**body_dict)
             self.shopping_events.append(shopping_event)
-        
-        elif shopping_event.event_type == 'purchase':
-            self.shopping_state.pop(shopping_event.product_number)
-            self.shopping_events.append(shopping_event)
-
         else:
-            xprint(f'Unknown event_type: {shopping_event.event_type}')
-            ch.basic_reject(delivery_tag=method.delivery_tag)
-            return
+            billing_event = BillingEvent(**body_dict)
+            self.billing_events.append(billing_event)
 
         ch.basic_ack(delivery_tag = method.delivery_tag)
-
 
     def start_consuming(self):
         # To implement - Start consuming from Rabbit
