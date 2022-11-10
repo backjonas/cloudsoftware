@@ -25,12 +25,18 @@ if __name__ == '__main__':
     parser.add_argument('--timeoffset', '-t', type=int,
                         help='Number of minutes to add to current timestamp to check if the product is purchased',
                         default=0)
+    parser.add_argument('--product_id', '-p', type=str,
+                        help="Product ID")
     args = parser.parse_args()
+
+    product_id = customers_database[args.customer_id]
+    if args.product_id is not None:
+        product_id = args.product_id
 
     shopping_event_producer = ShoppingEventProducer()
     shopping_event_producer.initialize_rabbitmq()
     shopping_event = ProductEvent(args.event,
-                                 customers_database[args.customer_id],
+                                 product_id,
                                  get_date_with_delta(args.timeoffset)
                                  )
     shopping_event_producer.publish(shopping_event)

@@ -36,19 +36,13 @@ class ShoppingWorker:
             exchange='shopping_events_exchange', 
             exchange_type='x-consistent-hash'
         )
-        self.channel.exchange_declare(
-            exchange='dlx',
-            exchange_type='direct'
-        )
 
         self.channel.queue_declare(
             queue=self.queue,
-            exclusive=True,
-            arguments={
-                'x-dead-letter-routing-key': 'shopping_events_dead_letter_queue',
-                'x-dead-letter-exchange' : 'dlx'
-            }
         )
+
+        self.channel.queue_declare(queue='shopping_events_dead_letter_queue')
+
         self.channel.queue_bind(
           exchange='shopping_events_exchange',
           queue=self.queue, routing_key=self.weight
@@ -75,12 +69,22 @@ class ShoppingWorker:
         customer_id = self.get_customer_id_from_shopping_event(shopping_event)
         if customer_id is None:
             xprint('customer_id not found for shopping event')
-            ch.basic_reject(delivery_tag=method.delivery_tag)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self.channel.basic_publish(
+                exchange='',
+                routing_key='shopping_events_dead_letter_queue',
+                body=body
+            )
             return
 
         if shopping_event.product_number not in customers_database.values():
             xprint(f'Unknown product number: {shopping_event.product_number}' )
-            ch.basic_reject(delivery_tag=method.delivery_tag)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self.channel.basic_publish(
+                exchange='',
+                routing_key='shopping_events_dead_letter_queue',
+                body=body
+            )
             return
 
         if shopping_event.event_type == 'pick up':
@@ -113,7 +117,12 @@ class ShoppingWorker:
 
         else:
             xprint(f'Unknown event_type: {shopping_event.event_type}')
-            ch.basic_reject(delivery_tag=method.delivery_tag)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self.channel.basic_publish(
+                exchange='',
+                routing_key='shopping_events_dead_letter_queue',
+                body=body
+            )
             return
 
         ch.basic_ack(delivery_tag = method.delivery_tag)
